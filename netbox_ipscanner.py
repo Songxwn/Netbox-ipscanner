@@ -5,36 +5,36 @@ TOKEN='xxx'
 
 NETBOXURL='https://your.netbox.address'
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) # disable safety warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) #禁用安全警告
 
 class IpScan(Script):
-    # optional variables in UI here!
+    # 这里是用户界面中的可选变量！
     class Meta:
-        name = "IP Scanner"
-        description = "Scans available prefixes and updates ip addresses in IPAM Module"
+        name = "IP 扫描器"
+        description = "扫描可用前缀并更新 IPAM 中的 IP 地址"
 
     def run(self, data, commit):
 
         def reverse_lookup(ip):
             '''
-            Mini function that does DNS reverse lookup with controlled failure
+            进行 DNS 反向查找并控制故障的迷你功能
             '''
             try:
                 data = socket.gethostbyaddr(ip)
             except Exception:
-                return '' # fails gracefully
-            if data[0] == '': # if there is no name
+                return '' # 优雅地失败
+            if data[0] == '': #  如果没有名称
                 return ''
             else:
                 return data[0]
 
         nb = pynetbox.api(NETBOXURL, token=TOKEN)
-        nb.http_session.verify = False # disable certificate checking
+        nb.http_session.verify = False # 禁用Netbox的证书检查
 
-        subnets = nb.ipam.prefixes.all()  # extracts all prefixes, in format x.x.x.x/yy
+        subnets = nb.ipam.prefixes.all()  #提取所有前缀，格式为 x.x.x.x/yyy
 
         for subnet in subnets:
-            if str(subnet.status) == 'Reserved': # Do not scan reserved subnets
+            if str(subnet.status) == 'Reserved': # 不扫描保留子网
                 self.log_warning(f"Scan of {subnet.prefix} NOT done (is Reserved)")
                 continue
             IPv4network = ipaddress.IPv4Network(subnet)
@@ -43,20 +43,20 @@ class IpScan(Script):
             scan.run()
             self.log_info(f'Scan of {subnet} done.')
 
-            # extract address info from Netbox
+            # 从 Netbox 中提取地址信息
             netbox_addresses = dict()
             for ip in nb.ipam.ip_addresses.filter(parent=str(subnet)):
                 netbox_addresses[str(ip)] = ip
 
-            # Routine to mark as DEPRECATED each Netbox entry that does not respond to ping
-            for address in IPv4network.hosts(): # for each address of the prefix x.x.x.x/yy...
+            # 将未响应 ping 的每个 Netbox 条目标记为已删除的例程
+            for address in IPv4network.hosts(): # 前缀为 x.x.x.x/yy 的每个地址
 		        #self.log_debug(f'checking {address}...')
                 netbox_address = netbox_addresses.get(address)
                 if netbox_address != None: # if the ip exists in netbox // if none exists, leave it to discover
                     if str(netbox_address).rpartition('/')[0] in scan.list_of_hosts_found:  # if he is in the list of "alive"
                         pass # do nothing: It exists in NB and is in the pinged list: ok continue, you will see it later when you cycle the ip addresses that have responded whether to update something
 			            #self.log_success(f"L'host {str(netbox_address).rpartition('/')[0]} esiste in netbox ed è stato pingato")
-                    else: # if it exists in netbox but is NOT in the list, mark it as deprecated
+                    else: # 如果它存在于 netbox 中，但不在列表中，则将其标记为已废弃
                         self.log_failure(f"Host {str(netbox_address)} exists in netbox but not responding --> DEPRECATED")
                         nb.ipam.ip_addresses.update([{'id':netbox_address.id, 'status':'deprecated'},])
             ####
@@ -85,3 +85,4 @@ class IpScan(Script):
                         self.log_success(f'Added {address1} - {name}')
                     else:
                         self.log_error(f'Adding {address1} - {name} FAILED')
+
