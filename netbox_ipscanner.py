@@ -52,9 +52,9 @@ class IpScan(Script):
             for address in IPv4network.hosts(): # 前缀为 x.x.x.x/yy 的每个地址
 		        #self.log_debug(f'checking {address}...')
                 netbox_address = netbox_addresses.get(address)
-                if netbox_address != None: # if the ip exists in netbox // if none exists, leave it to discover
-                    if str(netbox_address).rpartition('/')[0] in scan.list_of_hosts_found:  # if he is in the list of "alive"
-                        pass # do nothing: It exists in NB and is in the pinged list: ok continue, you will see it later when you cycle the ip addresses that have responded whether to update something
+                if netbox_address != None: # 如果 IP 地址存在于 netbox // 如果不存在，则让它处于发现状态
+                    if str(netbox_address).rpartition('/')[0] in scan.list_of_hosts_found:  # 如果他在 “活着 ”的名单中
+                        pass # 什么也不做：它存在于 NB 中，并在 ping 列表中：好的，继续，稍后当您循环查看已响应的 IP 地址是否需要更新时，就会看到它。
 			            #self.log_success(f"L'host {str(netbox_address).rpartition('/')[0]} esiste in netbox ed è stato pingato")
                     else: # 如果它存在于 netbox 中，但不在列表中，则将其标记为已废弃
                         self.log_failure(f"Host {str(netbox_address)} exists in netbox but not responding --> DEPRECATED")
@@ -65,7 +65,7 @@ class IpScan(Script):
                 self.log_warning(f'No host found in network {subnet}')
             else:
                 self.log_success(f'IPs found: {scan.list_of_hosts_found}')
-            for address1 in scan.list_of_hosts_found: # for each ip in the ping list...
+            for address1 in scan.list_of_hosts_found: # 对于 ping 列表中的每个 IP...
                 ip_mask=str(address1)+mask
                 current_in_netbox = netbox_addresses.get(ip_mask)
                 #self.log_debug(f'pinged ip: {address1} mask: {mask} --> {ip_mask} // extracted ip from netbox: {current_in_netbox}')
@@ -80,7 +80,7 @@ class IpScan(Script):
                         nb.ipam.ip_addresses.update([{'id':current_in_netbox.id, 'dns_name':name},])
                 else: # the pinged address is NOT present in Netbox, I have to add it
                     name = reverse_lookup(address1) # name resolution from DNS
-                    res = nb.ipam.ip_addresses.create(address=ip_mask, status='active', dns_name=name)
+                    res = nb.ipam.ip_addresses.create(address=ip_mask, status='deprecated', dns_name=name)
                     if res:
                         self.log_success(f'Added {address1} - {name}')
                     else:
